@@ -72,7 +72,7 @@ def load_full_data(url:str) -> pd.DataFrame:
             if len(inc_df) > 0:
                 crime_df = pd.concat([crime_df, inc_df])
 
-                # increase offset from previous iteration
+                # Over the previous iteration, increase the offset by one
                 offset_mul += 1
 
                 # create next-link (increase offset for next iteration)
@@ -84,6 +84,7 @@ def load_full_data(url:str) -> pd.DataFrame:
         print('Done!')
         end_time = time.time()
 
+    # Send a message indicating that the loading has been successful.
     comleted_load_msg = ("\n"
                          f"{'*'*108}\nLoad succesed! Start time: {datetime.now()}, elapsed time (sec): {(end_time - start_time):.2f}, "
                          f"Total Rows Loaded: {len(crime_df):,}\n{'*'*108}"
@@ -93,20 +94,20 @@ def load_full_data(url:str) -> pd.DataFrame:
     return crime_df
 
 
-def clean_data(df):
+def clean_data(df:pd.DataFrame) -> pd.DataFrame:
     # include eda + cleaning of the data
     pass
 
 
-def transform_data(df):
+def transform_data(df:pd.DataFrame) -> pd.DataFrame:
     pass
 
 
-def render_graph_html(df):
+def render_graph_html(df:pd.DataFrame) -> pd.DataFrame:
     pass
 
 
-def main(url):
+def main(url:str):
     raw_data_df = load_full_data(url)
 
     # Clean data
@@ -121,7 +122,7 @@ def main(url):
 
 
 if __name__ == '__main__':
-    api_url = 'https://data.lacity.org/resource/2nrs-mtv8.json?$where=date_rptd>"2023-01-01T00:00:00.000"&$limit=80000'
+    api_url = 'https://data.lacity.org/resource/2nrs-mtv8.json?$where=date_rptd>"2022-01-01T00:00:00.000"&$limit=80000'
 
     # load crimes to data freame
     df = main(api_url)
