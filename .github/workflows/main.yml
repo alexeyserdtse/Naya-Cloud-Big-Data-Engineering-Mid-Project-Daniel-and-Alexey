@@ -1,0 +1,31 @@
+name: Run Tests
+
+on:
+  push:
+    branches:
+      - main  # Set your main branch name here
+  pull_request:
+    branches:
+      - main  # Set your main branch name here
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.11.5  # Set your Python version here
+
+    - name: Install dependencies
+      run: |
+        pip install -r requirements.txt
+      working-directory: ./path/to/your/project
+
+    - name: Run tests
+      run: |
+        python -m pytest  # Adjust this command based on how you run your tests
+      working-directory: ./path/to/your/project
