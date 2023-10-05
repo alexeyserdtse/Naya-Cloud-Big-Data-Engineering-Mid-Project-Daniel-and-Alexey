@@ -6,7 +6,18 @@ import time
 from datetime import datetime
 
 
-def load_data_subset(url):
+def load_data_subset(url:str) -> pd.DataFrame:
+    """Returns a subset of the data based on a "N" limit of rows loaded from the given API's URL.
+    \nAfter the second iteration, the function will start with an offset equal to the limit pecified 
+    \nin the URL.
+
+    Args:
+        URL (str): This URL includes a starting point and a limit (per iteration) 
+                    on the number of rows that will be returned - default 1K.
+
+    Returns:
+        pd.DataFrame: A data frame containing a subset of incremental data from the API
+    """    
     try:
         # Open new connection:
         response = requests.get(url)
@@ -35,7 +46,17 @@ def load_data_subset(url):
     return df
 
 
-def load_full_data(url):
+def load_full_data(url:str) -> pd.DataFrame:
+    """This function loads the full data set from the API from the given beginning date by running 
+    \nload_data_subset multiple times
+
+    Args:
+        url (str): URL of API with offset and limit parameters.
+
+    Returns:
+        pd.DataFrame: A data frame containing a full set of data from the API within a given 
+        \n\tperiod of time.
+    """    
     crime_df = pd.DataFrame()
     fetch_full_data, offset_mul = True, 0
     start_time = time.time()
@@ -107,3 +128,7 @@ if __name__ == '__main__':
 
     print(df.head(5))
     print(f'Max date inside dataframe : {df.date_rptd.max()}')
+
+
+
+    
