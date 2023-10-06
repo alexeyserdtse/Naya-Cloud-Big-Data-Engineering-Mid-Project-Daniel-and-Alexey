@@ -4,6 +4,7 @@ import pandas as pd
 import sys
 import time
 from datetime import datetime
+from dotenv import dotenv_values
 
 
 def load_data_subset(url:str) -> pd.DataFrame:
@@ -94,6 +95,9 @@ def load_full_data(url:str) -> pd.DataFrame:
     return crime_df
 
 
+def eda(df:pd.DataFrame, run_eda_flag:bool):
+    pass
+
 def clean_data(df:pd.DataFrame) -> pd.DataFrame:
     # include eda + cleaning of the data
     pass
@@ -107,14 +111,21 @@ def render_graph_html(df:pd.DataFrame) -> pd.DataFrame:
     pass
 
 
-def main(url:str):
-    raw_data_df = load_full_data(url)
+def main(url:str, run_console: bool == True) -> pd.DataFrame:  
+    if run_console ==True:
+        raw_data_df = load_full_data(url)
 
-    # Clean data
-    clean_data_df = clean_data(raw_data_df)
+        # Clean data
+        clean_data_df = clean_data(raw_data_df)
 
-    # Transform data
-    transform_data_df = clean_data(clean_data_df)
+        # Transform data
+        transform_data_df = clean_data(clean_data_df)
+
+    else:
+        raw_data_df = load_full_data(url)
+        eda(raw_data_df)
+        clean_data_df = clean_data(raw_data_df)
+        transform_data_df = clean_data(clean_data_df)            
 
     # Render Graph inside html page:
 
