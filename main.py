@@ -1,146 +1,97 @@
-import requests
 import json
-import pandas as pd
-import sys
-import time
-from datetime import datetime
-from dotenv import dotenv_values
-
-
-def load_data_subset(url:str) -> pd.DataFrame:
-    """Returns a subset of the data based on a "N" limit of rows loaded from the given API's URL.
-    \nAfter the second iteration, the function will start with an offset equal to the limit pecified 
-    \nin the URL.
-
-    Args:
-        URL (str): This URL includes a starting point and a limit (per iteration) 
-                    on the number of rows that will be returned - default 1K.
-
-    Returns:
-        pd.DataFrame: A data frame containing a subset of incremental data from the API
-    """    
-    try:
-        # Open new connection:
-        response = requests.get(url)
-        if response.status_code == 200:
-            try:
-                data = response.json()
-                response.close()
-            except Exception as link_error:
-                print(link_error)
-        else:
-            err = (f"\n{'*'*65}\nError in response: \n\nStatus from API: {response.status_code}"
-                   f"\nError: \n{response.text}\nLink: {url}\n\n{'*'*65}")
-            print(err)
-
-        # re-write to json file:
-        with open('data.json', 'w') as f:
-            f.truncate(0)
-            json.dump(data, f)
-
-        # json to pandas df:
-        df = pd.read_json('data.json', orient='records')
-    except Exception as e:
-        print(f'\nAn error occurred: \n{e}\n\nLink: {url}\n')
-        sys.exit()
-
-    return df
-
-
-def load_full_data(url:str) -> pd.DataFrame:
-    """This function loads the full data set from the API from the given beginning date by running 
-    \nload_data_subset multiple times
-
-    Args:
-        url (str): URL of API with offset and limit parameters.
-
-    Returns:
-        pd.DataFrame: A data frame containing a full set of data from the API within a given 
-        \n\tperiod of time.
-    """    
-    crime_df = pd.DataFrame()
-    fetch_full_data, offset_mul = True, 0
-    start_time = time.time()
-
-    if fetch_full_data == True:
-        # init starting link:
-        url = url
-
-        while True:
-            inc_df = load_data_subset(url)
-
-            # run until api retrieve data:
-            if len(inc_df) > 0:
-                crime_df = pd.concat([crime_df, inc_df])
-
-                # Over the previous iteration, increase the offset by one
-                offset_mul += 1
-
-                # create next-link (increase offset for next iteration)
-                url = url[:103] + f'&$offset={80000 * offset_mul}'
-                print(f'Loaded: {len(crime_df):,}')
-            else:
-                break
-
-        print('Done!')
-        end_time = time.time()
-
-    # Send a message indicating that the loading has been successful.
-    comleted_load_msg = ("\n"
-                         f"{'*'*108}\nLoad succesed! Start time: {datetime.now()}, elapsed time (sec): {(end_time - start_time):.2f}, "
-                         f"Total Rows Loaded: {len(crime_df):,}\n{'*'*108}"
-                         )
-
-    print(comleted_load_msg)
-    return crime_df
-
-
-def eda(df:pd.DataFrame, run_eda_flag:bool):
-    pass
-
-def clean_data(df:pd.DataFrame) -> pd.DataFrame:
-    # include eda + cleaning of the data
-    pass
-
-
-def transform_data(df:pd.DataFrame) -> pd.DataFrame:
-    pass
-
-
-def render_graph_html(df:pd.DataFrame) -> pd.DataFrame:
-    pass
-
-
-def main(url:str, run_console: bool == True) -> pd.DataFrame:  
-    if run_console ==True:
-        raw_data_df = load_full_data(url)
-
-        # Clean data
-        clean_data_df = clean_data(raw_data_df)
-
-        # Transform data
-        transform_data_df = clean_data(clean_data_df)
-
-    else:
-        raw_data_df = load_full_data(url)
-        eda(raw_data_df)
-        clean_data_df = clean_data(raw_data_df)
-        transform_data_df = clean_data(clean_data_df)            
-
-    # Render Graph inside html page:
-
-    return raw_data_df
-
 
 if __name__ == '__main__':
-    api_url = 'https://data.lacity.org/resource/2nrs-mtv8.json?$where=date_rptd>"2022-01-01T00:00:00.000"&$limit=80000'
+    import argparse
+    import datetime
+    from datetime import date
+    import pandas as pd
+    import geopandas as gpd
+    import json
+    import plotly.express as px
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+    from data_load import load_full_data, transform_data
 
-    # load crimes to data freame
-    df = main(api_url)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--date',
+                        dest='date',
+                        type=lambda d: datetime.datetime.strptime(d, '%Y-%m-%d').date(),
+                        default=date.today() - datetime.timedelta(days=360))  # Corrected the default value
 
-    print(df.head(5))
-    print(f'Max date inside dataframe : {df.date_rptd.max()}')
+    parser.add_argument('--limit',
+                        dest='limit',
+                        type=int,
+                        default=10000)
+    args = parser.parse_args()
+
+    crime_date = args.date
+    rows_limit = args.limit
+    api_url = f"https://data.lacity.org/resource/2nrs-mtv8.json?$where=date_rptd>'{crime_date}T00:00:00.000'&$limit={rows_limit}"
+
+    def main(url=api_url) -> pd.DataFrame:
+        raw_data_df = load_full_data(url)
+        # Transform data
+        transform_data_df = transform_data(raw_data_df)
+        return transform_data_df  # You should return the result of your main function
+
+    def create_la_map(transform_data_df):
+        # max_marker_size = 70
+        # largest_num_crimes = transform_data_df['num_crimes'].max()
+        # marker_size = (transform_data_df['num_crimes'] / largest_num_crimes) * max_marker_size
+        # fig = go.Figure(go.Scattermapbox(
+        #     lon = transform_data_df['avg_lon'],
+        #     lat = transform_data_df['avg_lat'],
+        #     mode='markers',
+        #     marker=dict(
+        #     size= marker_size, #transform_data_df['num_crimes'],  # You can adjust the marker size as needed
+        #     color=transform_data_df['avg_time_occ'],
+        #     colorbar=dict(title='time to solve'),  # Set the color bar title
+        #     colorscale='Viridis',  # Choose the color scale you prefer
+        #     showscale=True,  # Show the color scale
+        # ),
+        #     text=transform_data_df[['area_name', 'num_crimes', 'avg_time_occ']],
+        # ))
+        # fig.update_layout(
+        #     mapbox_style="open-street-map",
+        #     mapbox={'center': go.layout.mapbox.Center(lon=-118.2437, lat=34.0522), 'zoom': 10}
+        # )
+        df = transform_data_df
+        file_path = "los-angeles.json"
+        with open(file_path, 'r') as f:
+             geojson = json.load(f)
+
+        fig = px.choropleth_mapbox(df, geojson=geojson, color="time_occ",
+                            locations="name",featureidkey="properties.name",
+                            range_color=(0,25),
+                            color_continuous_scale="Viridis",
+                            labels={"inter_pct": "Marriage (%)"},
+                            center={"lat": 34.0522, "lon": -118.2437},
+                            title= f"Resolve crimes in LA from {crime_date}" ,
+                            zoom= 9,
+                            opacity= 0.5,
+                            mapbox_style="open-street-map"
+                        )
+
+        fig.update_geos(fitbounds="locations", visible=True)
+        fig.update_layout( coloraxis_colorbar=dict(
+                bgcolor="rgba(22,33,49,1)",
+                tickfont=dict(
+                    color="rgba(255,255,255,1)"
+                ),)
+        )
+        # scatter_trace = px.scatter_mapbox(df, lat="lat", lon="lon", size_max=15, zoom=10)
+
+        # # You can customize the scatter trace here as needed
+
+        # fig.data += scatter_trace.data
 
 
 
-    
+        return fig
+
+
+    # Call the main function
+    result_df = main()
+    fig = create_la_map(result_df)
+    fig.show()
+    #print(result_df.head())
