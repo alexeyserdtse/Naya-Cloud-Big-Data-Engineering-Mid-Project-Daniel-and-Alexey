@@ -110,7 +110,8 @@ def transform_data(raw_data_df) :
     #gdf.crs = "EPSG:4326"
 
     # Load your Pandas DataFrame
-    df = raw_data_df[['area_name','lon','lat','time_occ','date_rptd','date_occ']]
+    df = raw_data_df[['dr_no','area_name','lon','vict_sex','lat','time_occ','date_rptd','date_occ']]
+    #df.to_excel('output.xlsx', index=False)
 
     # Ensure the DataFrame has a 'geometry' column with Point geometries
     df['geometry'] = df.apply(lambda row: Point(row['lon'], row['lat']), axis=1)
@@ -119,4 +120,16 @@ def transform_data(raw_data_df) :
 
     # Perform the spatial join
     joined_data = gpd.sjoin(gdf,df, predicate='contains', how='inner')
+
+    # Grouping by Location name
+    joined_data['Male_victims'] = joined_data['vict_sex'].apply(lambda x: 1 if x == 'M' else 0)
+    joined_data['Female_victims'] = joined_data['vict_sex'].apply(lambda x: 1 if x == 'F' else 0)
+    joined_data['Unknown_sex'] = joined_data['vict_sex'].apply(lambda x: 1 if x not in ['M','F'] else 0)
+    joined_data=joined_data.groupby(['name','geometry']).agg({
+        'dr_no': 'count',
+        'Male_victims':'sum',
+        'Female_victims':'sum',
+        'Unknown_sex': 'sum',
+    }).reset_index()
+    joined_data = joined_data.rename(columns={'dr_no':"Number_of_crimes" })
     return joined_data
